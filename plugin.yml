@@ -1,0 +1,5 @@
+name: CowMurder
+version: 1.0
+main: com.void_f3mme.cowmurder.CowMurder
+api-version: 1.13
+description: A plugin that punishes players for harming cows
