@@ -50,6 +50,9 @@ public class CowMurder extends JavaPlugin implements Listener {
             assaultScore.setScore(assaultScore.getScore() + 1);
 
             player.setHealth(0);
+
+            // Summon lightning
+            player.getWorld().strikeLightningEffect(player.getLocation());
             
             String deathMessage = getRandomDeathMessage(player.getName());
             Bukkit.broadcastMessage(deathMessage);
