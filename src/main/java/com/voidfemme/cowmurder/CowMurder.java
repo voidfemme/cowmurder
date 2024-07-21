@@ -1,4 +1,4 @@
-package com.void_f3mme.cowmurder;
+package com.voidfemme.cowmurder;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Cow;
@@ -15,6 +15,14 @@ import org.bukkit.scoreboard.Scoreboard;
 import java.util.Random;
 
 public class CowMurder extends JavaPlugin implements Listener {
+    private static final String[] DEATH_MESSAGES = {
+      "%s was moo-rdered for their bovine crimes",
+      "%s faced divine bovine retribution",
+      "The cows fought back, and %s lost",
+      "%s learned the hard way not to mess with cows",
+      "A mysterious force struck down %s for harming a cow"
+    };
+
     private Random random = new Random();
 
     @Override
@@ -41,9 +49,7 @@ public class CowMurder extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onEntityDamage(EntityDamageByEntityEvent event) {
-        if (event.getEntity() instanceof Cow && event.getDamager() instanceof Player) {
-            Player player = (Player) event.getDamager();
-            
+        if (event.getEntity() instanceof Cow cow && event.getDamager() instanceof Player player) {
             Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
             Objective assaultObjective = board.getObjective("cowAssaults");
             Score assaultScore = assaultObjective.getScore(player.getName());
@@ -51,7 +57,7 @@ public class CowMurder extends JavaPlugin implements Listener {
 
             player.setHealth(0);
 
-            // Summon lightning
+            // Summon lightning effect
             player.getWorld().strikeLightningEffect(player.getLocation());
             
             String deathMessage = getRandomDeathMessage(player.getName());
@@ -74,13 +80,6 @@ public class CowMurder extends JavaPlugin implements Listener {
     }
 
     private String getRandomDeathMessage(String playerName) {
-        String[] messages = {
-            playerName + " was moo-rdered for their bovine crimes",
-            playerName + " faced divine bovine retribution",
-            "The cows fought back, and " + playerName + " lost",
-            playerName + " learned the hard way not to mess with cows",
-            "A mysterious force struck down " + playerName + " for harming a cow"
-        };
-        return messages[random.nextInt(messages.length)];
+        return String.format(DEATH_MESSAGES[random.nextInt(DEATH_MESSAGES.length)], playerName);
     }
 }

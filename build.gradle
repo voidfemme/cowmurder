@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+  }
+
+group = 'com.voidfemme'
+version = '1.0.1'
+
+repositories {
+  mavenCentral()
+    maven {
+      name = 'spigotmc-repo'
+      url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+    }
+  }
+
+dependencies {
+    compileOnly 'org.spigotmc:spigot-api:1.21-R0.1-SNAPSHOT'
+  }
+
+// Minecraft 1.21 requires Java 21 or later
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+  }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+  }
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+      }
+  }
+
+shadowJar {
+    archiveBaseName.set(project.name)
+    archiveClassifier.set('')
+    archiveVersion.set('')
+  }
+
+build.dependsOn shadowJar
