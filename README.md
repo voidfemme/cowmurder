@@ -12,7 +12,7 @@ CowMurder is a Minecraft plugin that adds a humorous twist to cow interactions. 
 ## Installation
 
 1. Ensure you have a Spigot or Paper Minecraft server (version 1.21 or compatible) set up.
-2. Download the latest `cowmurder-1.0-SNAPSHOT.jar` from the releases section.
+2. Download the latest `cowmurder-1.0.1.jar` from the releases section.
 3. Place the JAR file in your server's `plugins` folder.
 4. Restart your server or run the command `/reload confirm` if your server supports it.
 
