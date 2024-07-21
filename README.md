@@ -32,15 +32,6 @@ Currently, this plugin doesn't use any permission nodes. All players are affecte
 
 There is no configuration file for this plugin at the moment. All behavior is hardcoded.
 
-## Building from Source
-
-To build the plugin from source:
-
-1. Ensure you have Java 17 and Maven installed.
-2. Clone this repository.
-3. Run `mvn clean package` in the project root directory.
-4. The compiled JAR will be in the `target` folder.
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
