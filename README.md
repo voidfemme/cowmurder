@@ -11,10 +11,18 @@ CowMurder is a Minecraft plugin that adds a humorous twist to cow interactions. 
 
 ## Installation
 
-1. Ensure you have a Spigot or Paper Minecraft server (version 1.21 or compatible) set up.
-2. Download the latest `cowmurder-1.0.2.jar` from the releases section.
+1. Ensure you have a Spigot or Paper Minecraft server (version 1.21.1 or compatible) set up.
+2. Download the latest `cowmurder-1.0.3.jar` from the releases section.
 3. Place the JAR file in your server's `plugins` folder.
 4. Restart your server or run the command `/reload confirm` if your server supports it.
+
+## Building from Source
+
+To build the plugin from source:
+1. Ensure you have Java 21 and Gradle installed.
+2. Clone this repository.
+3. Run `./gradlew clean build` in the project root directory.
+4. The compiled JAR will be in the `build/libs` folder.
 
 ## Usage
 
@@ -32,14 +40,9 @@ Currently, this plugin doesn't use any permission nodes. All players are affecte
 
 There is no configuration file for this plugin at the moment. All behavior is hardcoded.
 
-## Building from Source
+## Recent Updates
 
-To build the plugin from source:
-
-1. Ensure you have Java 17 and Maven installed.
-2. Clone this repository.
-3. Run `mvn clean package` in the project root directory.
-4. The compiled JAR will be in the `target` folder.
+- Updated for Minecraft 1.21.1 compatibility
 
 ## Contributing
 
