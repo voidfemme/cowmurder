@@ -4,23 +4,30 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Cow;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.damage.DamageSource;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Random;
 
 public class CowMurder extends JavaPlugin implements Listener {
     private static final String[] DEATH_MESSAGES = {
-      "%s was moo-rdered for their bovine crimes",
-      "%s faced divine bovine retribution",
-      "The cows fought back, and %s lost",
-      "%s learned the hard way not to mess with cows",
-      "A mysterious force struck down %s for harming a cow"
+        "%s was moo-rdered for their bovine crimes",
+        "%s faced divine bovine retribution",
+        "The cows fought back, and %s lost",
+        "%s learned the hard way not to mess with cows",
+        "A mysterious force struck down %s for harming a cow"
     };
 
     private Random random = new Random();
@@ -54,18 +61,32 @@ public class CowMurder extends JavaPlugin implements Listener {
             Objective assaultObjective = board.getObjective("cowAssaults");
             Score assaultScore = assaultObjective.getScore(player.getName());
             assaultScore.setScore(assaultScore.getScore() + 1);
-
+    
+            // Cancel the original damage event
+            event.setCancelled(true);
+    
+            // Kill the player
             player.setHealth(0);
-
+    
             // Summon lightning effect
             player.getWorld().strikeLightningEffect(player.getLocation());
             
+            // Get the random death message
             String deathMessage = getRandomDeathMessage(player.getName());
-            Bukkit.broadcastMessage(deathMessage);
-
-            event.setCancelled(true);
+    
+            // Register a temporary listener to set the death message
+            Bukkit.getPluginManager().registerEvents(new Listener() {
+                @EventHandler(priority = EventPriority.HIGHEST)
+                public void onPlayerDeath(PlayerDeathEvent event) {
+                    if (event.getEntity().equals(player)) {
+                        event.setDeathMessage(deathMessage);
+                        // Unregister this listener after it's used
+                        HandlerList.unregisterAll(this);
+                    }
+                }
+            }, this);
         }
-    }
+    }    
 
     @EventHandler
     public void onEntityDeath(EntityDeathEvent event) {
