@@ -1,106 +1,410 @@
 package com.voidfemme.cowmurder;
 
 import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Cow;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.damage.DamageSource;
+import org.bukkit.scoreboard.ScoreboardManager;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CowMurder extends JavaPlugin implements Listener {
-    private static final String[] DEATH_MESSAGES = {
-        "%s was moo-rdered for their bovine crimes",
-        "%s faced divine bovine retribution",
-        "The cows fought back, and %s lost",
-        "%s learned the hard way not to mess with cows",
-        "A mysterious force struck down %s for harming a cow"
-    };
-
-    private Random random = new Random();
+    private FileConfiguration config;
+    private final Random random = new Random();
+    private final Map<UUID, PendingPunishment> pendingPunishments = new ConcurrentHashMap<>();
+    
+    private static class PendingPunishment {
+        final String deathMessage;
+        final long timestamp;
+        
+        PendingPunishment(String deathMessage) {
+            this.deathMessage = deathMessage;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
 
     @Override
     public void onEnable() {
-        getServer().getPluginManager().registerEvents(this, this);
-        setupScoreboard();
-        getLogger().info("CowMurder has been enabled!");
+        try {
+            saveDefaultConfig();
+            config = getConfig();
+            
+            if (!config.getBoolean("settings.enabled", true)) {
+                getLogger().info("CowMurder is disabled via configuration.");
+                return;
+            }
+            
+            getServer().getPluginManager().registerEvents(this, this);
+            setupScoreboard();
+            
+            // Clean up expired pending punishments every 30 seconds
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    cleanupExpiredPunishments();
+                }
+            }.runTaskTimer(this, 600L, 600L); // 30 seconds = 600 ticks
+            
+            getLogger().info("CowMurder has been enabled!");
+            if (config.getBoolean("settings.debug", false)) {
+                getLogger().info("Debug mode is enabled.");
+            }
+        } catch (Exception e) {
+            getLogger().severe("Failed to enable CowMurder: " + e.getMessage());
+            e.printStackTrace();
+            setEnabled(false);
+        }
     }
 
     @Override
     public void onDisable() {
+        pendingPunishments.clear();
         getLogger().info("CowMurder has been disabled!");
     }
 
     private void setupScoreboard() {
-        Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
-        if (board.getObjective("cowAssaults") == null) {
-            board.registerNewObjective("cowAssaults", "dummy", "Cow Assaults");
+        if (!config.getBoolean("scoreboard.enabled", true)) {
+            return;
         }
-        if (board.getObjective("cowKills") == null) {
-            board.registerNewObjective("cowKills", "dummy", "Cow Kills");
+        
+        try {
+            ScoreboardManager manager = Bukkit.getScoreboardManager();
+            if (manager == null) {
+                getLogger().warning("ScoreboardManager is null, cannot setup scoreboard.");
+                return;
+            }
+            
+            Scoreboard board = manager.getMainScoreboard();
+            if (board == null) {
+                getLogger().warning("Main scoreboard is null, cannot setup scoreboard.");
+                return;
+            }
+            
+            String assaultObjective = config.getString("scoreboard.assault-objective", "cowAssaults");
+            String killObjective = config.getString("scoreboard.kill-objective", "cowKills");
+            String assaultDisplay = config.getString("scoreboard.assault-display", "Cow Assaults");
+            String killDisplay = config.getString("scoreboard.kill-display", "Cow Kills");
+            
+            if (config.getBoolean("scoreboard.track-assaults", true) && board.getObjective(assaultObjective) == null) {
+                board.registerNewObjective(assaultObjective, "dummy", assaultDisplay);
+                if (config.getBoolean("settings.debug", false)) {
+                    getLogger().info("Created assault scoreboard objective: " + assaultObjective);
+                }
+            }
+            
+            if (config.getBoolean("scoreboard.track-kills", true) && board.getObjective(killObjective) == null) {
+                board.registerNewObjective(killObjective, "dummy", killDisplay);
+                if (config.getBoolean("settings.debug", false)) {
+                    getLogger().info("Created kill scoreboard objective: " + killObjective);
+                }
+            }
+        } catch (Exception e) {
+            getLogger().warning("Failed to setup scoreboard: " + e.getMessage());
         }
     }
 
     @EventHandler
     public void onEntityDamage(EntityDamageByEntityEvent event) {
-        if (event.getEntity() instanceof Cow cow && event.getDamager() instanceof Player player) {
-            Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
-            Objective assaultObjective = board.getObjective("cowAssaults");
-            Score assaultScore = assaultObjective.getScore(player.getName());
-            assaultScore.setScore(assaultScore.getScore() + 1);
-    
+        if (!config.getBoolean("settings.enabled", true)) {
+            return;
+        }
+        
+        if (!(event.getEntity() instanceof Cow) || !(event.getDamager() instanceof Player player)) {
+            return;
+        }
+        
+        // Check bypass permission
+        String bypassPerm = config.getString("permissions.bypass-permission", "cowmurder.bypass");
+        if (player.hasPermission(bypassPerm)) {
+            if (config.getBoolean("settings.debug", false)) {
+                getLogger().info("Player " + player.getName() + " bypassed cow protection with permission.");
+            }
+            return;
+        }
+        
+        try {
             // Cancel the original damage event
             event.setCancelled(true);
-    
-            // Kill the player
-            player.setHealth(0);
-    
-            // Summon lightning effect
-            player.getWorld().strikeLightningEffect(player.getLocation());
             
-            // Get the random death message
-            String deathMessage = getRandomDeathMessage(player.getName());
-    
-            // Register a temporary listener to set the death message
-            Bukkit.getPluginManager().registerEvents(new Listener() {
-                @EventHandler(priority = EventPriority.HIGHEST)
-                public void onPlayerDeath(PlayerDeathEvent event) {
-                    if (event.getEntity().equals(player)) {
-                        event.setDeathMessage(deathMessage);
-                        // Unregister this listener after it's used
-                        HandlerList.unregisterAll(this);
-                    }
-                }
-            }, this);
+            // Track assault in scoreboard
+            trackAssault(player);
+            
+            // Apply punishment
+            applyPunishment(player);
+            
+        } catch (Exception e) {
+            getLogger().warning("Error handling cow damage by " + player.getName() + ": " + e.getMessage());
         }
     }    
 
     @EventHandler
     public void onEntityDeath(EntityDeathEvent event) {
-        if (event.getEntity() instanceof Cow && event.getEntity().getKiller() instanceof Player) {
-            Player player = event.getEntity().getKiller();
-            
-            Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
-            Objective killObjective = board.getObjective("cowKills");
-            Score killScore = killObjective.getScore(player.getName());
-            killScore.setScore(killScore.getScore() + 1);
+        if (!config.getBoolean("settings.enabled", true) || !config.getBoolean("scoreboard.track-kills", true)) {
+            return;
+        }
+        
+        if (!(event.getEntity() instanceof Cow) || !(event.getEntity().getKiller() instanceof Player player)) {
+            return;
+        }
+        
+        try {
+            trackKill(player);
+        } catch (Exception e) {
+            getLogger().warning("Error tracking cow kill by " + player.getName() + ": " + e.getMessage());
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        PendingPunishment punishment = pendingPunishments.remove(player.getUniqueId());
+        
+        if (punishment != null && config.getBoolean("settings.custom-death-messages", true)) {
+            event.setDeathMessage(punishment.deathMessage);
+            if (config.getBoolean("settings.debug", false)) {
+                getLogger().info("Applied custom death message for " + player.getName());
+            }
+        }
+    }
+    
+    private void trackAssault(Player player) {
+        if (!config.getBoolean("scoreboard.enabled", true) || !config.getBoolean("scoreboard.track-assaults", true)) {
+            return;
+        }
+        
+        try {
+            ScoreboardManager manager = Bukkit.getScoreboardManager();
+            if (manager == null) return;
+            
+            Scoreboard board = manager.getMainScoreboard();
+            if (board == null) return;
+            
+            String objectiveName = config.getString("scoreboard.assault-objective", "cowAssaults");
+            Objective objective = board.getObjective(objectiveName);
+            
+            if (objective != null) {
+                Score score = objective.getScore(player.getName());
+                score.setScore(score.getScore() + 1);
+                
+                if (config.getBoolean("settings.debug", false)) {
+                    getLogger().info("Tracked assault for " + player.getName() + ", new score: " + score.getScore());
+                }
+            }
+        } catch (Exception e) {
+            getLogger().warning("Failed to track assault for " + player.getName() + ": " + e.getMessage());
+        }
+    }
+    
+    private void trackKill(Player player) {
+        try {
+            ScoreboardManager manager = Bukkit.getScoreboardManager();
+            if (manager == null) return;
+            
+            Scoreboard board = manager.getMainScoreboard();
+            if (board == null) return;
+            
+            String objectiveName = config.getString("scoreboard.kill-objective", "cowKills");
+            Objective objective = board.getObjective(objectiveName);
+            
+            if (objective != null) {
+                Score score = objective.getScore(player.getName());
+                score.setScore(score.getScore() + 1);
+                
+                if (config.getBoolean("settings.debug", false)) {
+                    getLogger().info("Tracked kill for " + player.getName() + ", new score: " + score.getScore());
+                }
+            }
+        } catch (Exception e) {
+            getLogger().warning("Failed to track kill for " + player.getName() + ": " + e.getMessage());
+        }
+    }
+    
+    private void applyPunishment(Player player) {
+        String punishmentType = config.getString("settings.punishment-type", "DEATH").toUpperCase();
+        
+        // Lightning effect
+        if (config.getBoolean("settings.lightning-effect", true)) {
+            try {
+                player.getWorld().strikeLightningEffect(player.getLocation());
+            } catch (Exception e) {
+                getLogger().warning("Failed to create lightning effect: " + e.getMessage());
+            }
+        }
+        
+        // Prepare death message if needed
+        String deathMessage = null;
+        if (config.getBoolean("settings.custom-death-messages", true)) {
+            deathMessage = getRandomDeathMessage(player.getName());
+            pendingPunishments.put(player.getUniqueId(), new PendingPunishment(deathMessage));
+        }
+        
+        // Apply punishment
+        switch (punishmentType) {
+            case "DEATH":
+                try {
+                    player.setHealth(0);
+                    if (config.getBoolean("settings.debug", false)) {
+                        getLogger().info("Applied death punishment to " + player.getName());
+                    }
+                } catch (Exception e) {
+                    getLogger().warning("Failed to kill player " + player.getName() + ": " + e.getMessage());
+                }
+                break;
+                
+            case "DAMAGE":
+                try {
+                    double damage = config.getDouble("settings.damage-amount", 10.0);
+                    double newHealth = Math.max(0, player.getHealth() - damage);
+                    player.setHealth(newHealth);
+                    if (config.getBoolean("settings.debug", false)) {
+                        getLogger().info("Applied " + damage + " damage to " + player.getName());
+                    }
+                } catch (Exception e) {
+                    getLogger().warning("Failed to damage player " + player.getName() + ": " + e.getMessage());
+                }
+                break;
+                
+            case "LIGHTNING_ONLY":
+                // Lightning effect already applied above
+                if (config.getBoolean("settings.debug", false)) {
+                    getLogger().info("Applied lightning-only punishment to " + player.getName());
+                }
+                break;
+                
+            default:
+                getLogger().warning("Unknown punishment type: " + punishmentType + ". Defaulting to DEATH.");
+                try {
+                    player.setHealth(0);
+                } catch (Exception e) {
+                    getLogger().warning("Failed to apply default death punishment: " + e.getMessage());
+                }
+        }
+    }
+    
     private String getRandomDeathMessage(String playerName) {
-        return String.format(DEATH_MESSAGES[random.nextInt(DEATH_MESSAGES.length)], playerName);
+        List<String> messages = config.getStringList("death-messages");
+        
+        if (messages.isEmpty()) {
+            return playerName + " was punished for harming a cow";
+        }
+        
+        String message = messages.get(random.nextInt(messages.size()));
+        return message.replace("%player%", playerName);
+    }
+    
+    private void cleanupExpiredPunishments() {
+        long currentTime = System.currentTimeMillis();
+        long expireTime = 10000; // 10 seconds
+        
+        pendingPunishments.entrySet().removeIf(entry -> {
+            boolean expired = (currentTime - entry.getValue().timestamp) > expireTime;
+            if (expired && config.getBoolean("settings.debug", false)) {
+                getLogger().info("Cleaned up expired punishment for player UUID: " + entry.getKey());
+            }
+            return expired;
+        });
+    }
+    
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!command.getName().equalsIgnoreCase("cowmurder")) {
+            return false;
+        }
+        
+        String adminPerm = config.getString("permissions.admin-permission", "cowmurder.admin");
+        if (!sender.hasPermission(adminPerm)) {
+            sender.sendMessage("§cYou don't have permission to use this command.");
+            return true;
+        }
+        
+        if (args.length == 0) {
+            sender.sendMessage("§6CowMurder v" + getDescription().getVersion());
+            sender.sendMessage("§6Usage: /cowmurder [reload|stats]");
+            return true;
+        }
+        
+        switch (args[0].toLowerCase()) {
+            case "reload":
+                try {
+                    reloadConfig();
+                    config = getConfig();
+                    sender.sendMessage("§aCowMurder configuration reloaded successfully!");
+                } catch (Exception e) {
+                    sender.sendMessage("§cFailed to reload configuration: " + e.getMessage());
+                    getLogger().warning("Failed to reload config: " + e.getMessage());
+                }
+                break;
+                
+            case "stats":
+                if (args.length > 1) {
+                    showPlayerStats(sender, args[1]);
+                } else {
+                    sender.sendMessage("§6Usage: /cowmurder stats <player>");
+                }
+                break;
+                
+            default:
+                sender.sendMessage("§cUnknown subcommand. Use: /cowmurder [reload|stats]");
+        }
+        
+        return true;
+    }
+    
+    private void showPlayerStats(CommandSender sender, String playerName) {
+        try {
+            ScoreboardManager manager = Bukkit.getScoreboardManager();
+            if (manager == null) {
+                sender.sendMessage("§cScoreboard manager is not available.");
+                return;
+            }
+            
+            Scoreboard board = manager.getMainScoreboard();
+            if (board == null) {
+                sender.sendMessage("§cMain scoreboard is not available.");
+                return;
+            }
+            
+            sender.sendMessage("§6=== Cow Stats for " + playerName + " ===");
+            
+            if (config.getBoolean("scoreboard.track-assaults", true)) {
+                String assaultObj = config.getString("scoreboard.assault-objective", "cowAssaults");
+                Objective assaults = board.getObjective(assaultObj);
+                if (assaults != null) {
+                    int assaultScore = assaults.getScore(playerName).getScore();
+                    sender.sendMessage("§eCow Assaults: " + assaultScore);
+                }
+            }
+            
+            if (config.getBoolean("scoreboard.track-kills", true)) {
+                String killObj = config.getString("scoreboard.kill-objective", "cowKills");
+                Objective kills = board.getObjective(killObj);
+                if (kills != null) {
+                    int killScore = kills.getScore(playerName).getScore();
+                    sender.sendMessage("§eCow Kills: " + killScore);
+                }
+            }
+            
+        } catch (Exception e) {
+            sender.sendMessage("§cError retrieving stats: " + e.getMessage());
+            getLogger().warning("Error showing stats for " + playerName + ": " + e.getMessage());
+        }
     }
 }
