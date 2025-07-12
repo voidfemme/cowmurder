@@ -1,45 +1,67 @@
 plugins {
     id 'java'
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
-  }
+    id 'com.gradleup.shadow' version '8.3.7'
+    id 'io.papermc.paperweight.userdev' version '2.0.0-beta.18'
+}
 
 group = 'com.voidfemme'
-version = '1.1.0'
+version = '1.2.0'
 
 repositories {
-  mavenCentral()
+    mavenCentral()
     maven {
-      name = 'spigotmc-repo'
-      url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+        name = 'papermc-repo'
+        url = 'https://repo.papermc.io/repository/maven-public/'
     }
-  }
+}
 
 dependencies {
-    compileOnly 'org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT'
-  }
+    // Use Paper dev bundle for 1.21.7
+    paperweight.paperDevBundle("1.21.7-R0.1-SNAPSHOT")
+}
 
-// Minecraft 1.21 requires Java 21 or later
+// Minecraft 1.21.7 requires Java 21
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
-  }
+    withSourcesJar()
+}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-  }
+    options.release.set(21)
+}
 
 processResources {
     def props = [version: version]
     inputs.properties props
-    filteringCharset 'UTF-8'
+    filteringCharset = 'UTF-8'  // Fixed deprecated syntax
     filesMatching('plugin.yml') {
         expand props
-      }
-  }
+    }
+}
 
+// Shadow jar configuration
 shadowJar {
     archiveBaseName.set(project.name)
     archiveClassifier.set('')
     archiveVersion.set('')
-  }
+}
 
+// Ensure proper build order
 build.dependsOn shadowJar
+
+// Add manifest information for better plugin identification
+tasks.jar {
+    manifest {
+        attributes(
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'voidfemme',
+            'Bukkit-Plugin-Mappings': 'mojang'
+        )
+    }
+}
+
+compileJava {
+	options.compilerArgs += ['-Xlint:deprecation', '-Xdiags:verbose']
+}

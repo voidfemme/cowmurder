@@ -24,7 +24,7 @@ CowMurder is a highly configurable Minecraft plugin that adds a humorous twist t
 
 ## Installation
 
-1. Ensure you have a Spigot or Paper Minecraft server (version 1.21.4 or compatible) set up.
+1. Ensure you have a Spigot or Paper Minecraft server (version 1.21.7 or compatible) set up.
 2. Download the latest `CowMurder.jar` from the [releases section](https://github.com/voidfemme/cow_murder/releases).
 3. Place the JAR file in your server's `plugins` folder.
 4. Restart your server.
@@ -104,22 +104,24 @@ For complete configuration options, see the generated `config.yml` file.
 
 ## Compatibility
 
-- **Minecraft Version**: 1.21.4
+- **Minecraft Version**: 1.21.7
 - **Server Software**: Spigot, Paper, and derivatives
 - **Java Version**: 21 or higher
 
 ## Recent Updates
 
-### Version 1.1.0 (Latest)
-- **Major Overhaul**: Complete rewrite with configuration system
-- **Permission System**: Added bypass and admin permissions
-- **Admin Commands**: Configuration reload and player statistics
-- **Enhanced Logging**: Debug mode and comprehensive error handling
-- **Configurable Punishment**: Multiple punishment types and customization
-- **Memory Leak Fixes**: Improved event handling and cleanup
-- **Updated Compatibility**: Minecraft 1.21.4 support
+### Version 1.2.0 (Latest)
+- **Minecraft 1.21.7 Support**: Updated for the latest Minecraft version
+- **Paper API Migration**: Migrated from Spigot to Paper API for better performance
+- **Modern Messaging**: Updated to Adventure Component API for rich text support
+- **Build System Modernization**: Updated Gradle, Shadow plugin, and dependencies
+- **Mojang Mappings**: Added support for official Mojang mappings
+- **Enhanced Compatibility**: Future-proofed for upcoming Minecraft versions
 
 ### Previous Versions
+- **Version 1.1.0**: Complete rewrite with configuration system, permission
+system, admin commands, enhanced logging, configurable punishment, memory leak
+fixes, and Minecraft 1.21.4 support
 - Version 1.0.3: Updated for Minecraft 1.21.1 compatibility
 
 ## Contributing

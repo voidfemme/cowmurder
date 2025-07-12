@@ -5,7 +5,50 @@ All notable changes to CowMurder will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2025-07-12
+
+### Added
+- **Paper API Support**: Migrated from Spigot to Paper API for enhanced performance and features
+- **Adventure Component API**: Modern rich text messaging system replacing legacy string-based messages
+- **Mojang Mappings**: Added official Mojang mappings support for better compatibility
+- **Enhanced Build Configuration**: Comprehensive Gradle build improvements with proper manifest attributes
+- **Command Aliases**: Added `/cm` alias for the main `/cowmurder` command
+
+### Changed
+- **Minecraft Compatibility**: Updated from 1.21.4 to 1.21.7 support
+- **API Migration**: Replaced deprecated Spigot APIs with modern Paper equivalents
+  - Updated `event.setDeathMessage()` to `event.deathMessage(Component)`
+  - Replaced string-based scoreboard creation with `Criteria.DUMMY` and `Component.text()`
+  - Migrated to Adventure Components for all user-facing messages
+- **Build System Modernization**:
+  - Updated Gradle from 8.9 to 8.14.3
+  - Migrated Shadow plugin from `com.github.johnrengelman.shadow` to `com.gradleup.shadow`
+  - Updated Shadow plugin from 8.1.1 to 8.3.7 (eliminates Gradle 9.0 deprecation warnings)
+  - Added paperweight userdev plugin for Paper development
+- **Plugin Metadata**: Updated `getDescription().getVersion()` to `getPluginMeta().getVersion()`
+- **Code Quality**: Improved code formatting and structure throughout
+
+### Fixed
+- **Gradle Deprecation Warnings**: Eliminated `FileTreeElement.getMode()` deprecation warning
+- **Build Compatibility**: Resolved plugin resolution issues with updated Shadow plugin coordinates
+- **API Deprecations**: Updated all deprecated method calls to modern equivalents
+
+### Technical
+- **Dependency Updates**: 
+  - Migrated from Spigot API to Paper dev bundle
+  - Updated Java toolchain configuration for Paper compatibility
+  - Added Adventure API dependencies for rich text support
+- **Build Configuration**:
+  - Enhanced shadow jar configuration with proper archiving
+  - Added compiler arguments for better deprecation warnings
+  - Improved plugin.yml with updated API version and mappings
+- **Development Tools**: Updated wrapper and plugin versions for latest Gradle features
+
+### Compatibility
+- **Minecraft**: Now supports 1.21.7 (up from 1.21.4)
+- **Server Software**: Paper, Spigot, and Paper-based forks
+- **Java**: Requires Java 21 (unchanged)
+- **API**: Paper API 1.21.7+ recommended, Spigot API 1.21.7+ minimum
 
 ## [1.1.0] - 2025-06-13
 
@@ -114,7 +157,8 @@ This project follows [Semantic Versioning](https://semver.org/):
 - **PATCH**: Bug fixes, backward compatible
 
 ### Links:
-- [Unreleased]: https://github.com/voidfemme/cow_murder/compare/v1.1.0...HEAD
+- [Unreleased]: https://github.com/voidfemme/cow_murder/compare/v1.2.0...HEAD
+- [1.2.0]: https://github.com/voidfemme/cow_murder/compare/v1.1.0...v1.2.0
 - [1.1.0]: https://github.com/voidfemme/cow_murder/compare/v1.0.3...v1.1.0
 - [1.0.3]: https://github.com/voidfemme/cow_murder/compare/v1.0.2...v1.0.3
 - [1.0.2]: https://github.com/voidfemme/cow_murder/compare/v1.0.1...v1.0.2
