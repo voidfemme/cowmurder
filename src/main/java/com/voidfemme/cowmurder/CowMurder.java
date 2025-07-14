@@ -3,6 +3,8 @@ package com.voidfemme.cowmurder;
 import org.bukkit.Bukkit;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.minecraft.world.entity.projectile.Projectile;
+
 import org.bukkit.scoreboard.Criteria;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -115,31 +117,35 @@ public class CowMurder extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onEntityDamage(EntityDamageByEntityEvent event) {
-        // Debug: Always log damage events
-        // getLogger().info("=== DAMAGE EVENT DEBUG ===");
-        // getLogger().info("Entity damaged: " + event.getEntity().getType());
-        // getLogger().info("Damager: " + event.getDamager().getType());
-        // getLogger().info("Plugin enabled: " + config.getBoolean("settings.enabled",
-        // true));
-
         if (!config.getBoolean("settings.enabled", true)) {
             getLogger().info("Plugin is disabled, returning");
             return;
         }
 
+        // Check if the entity is a cow
         if (!(event.getEntity() instanceof Cow) || !(event.getDamager() instanceof Player player)) {
-            getLogger().info("Entity is not a cow: " + event.getEntity().getClass().getSimpleName());
             return;
         }
 
+        player = null;
+
+        // Check if damager is a player (direct damage)
         if (!(event.getDamager() instanceof Player)) {
-            getLogger().info("Damager is not a player: " + event.getEntity().getClass().getSimpleName());
             return;
         }
 
-        // getLogger().info("=== COW DAMAGE DETECTED ===");
-        // getLogger().info("Player: " + player.getName());
-        // getLogger().info("Cow: " + event.getEntity().getClass().getSimpleName());
+        // Check if damager is a projectile shot by a player
+        else if (event.getDamager() instanceof Projectile projectile) {
+            if (projectile.getOwner() instanceof Player shooter) {
+                player = shooter;
+            }
+        }
+
+        // If no player found, return
+        if (player == null) {
+            getLogger().info("Damager is not a player or player-shot projectile");
+            return;
+        }
 
         try {
             // Check bypass permission
